@@ -41,11 +41,18 @@ static void build_ac_frame(int temp, int fan, bool swing, bool on) {
   };
   tx_buf[i++] = 9000;
   tx_buf[i++] = -4450;
-  emit_byte((uint8_t)((on ? 0x10 : 0x00) | (swing ? 0xE0 : 0x00) | 0x03));
+  // Frame 0 payload is 35 bits: skip b0's first bit (it duplicated the
+  // header when the layout was reverse-engineered - verified against the
+  // captures: AC's view == this sequence). Structure matches the proven
+  // arrays exactly: 35 bit pairs, lone mark, frame gap, frame 1, tail.
+  uint8_t b0 = (uint8_t)((on ? 0x10 : 0x00) | (swing ? 0xE0 : 0x00) | 0x03);
+  for (int k = 1; k < 8; k++)
+    emit_bit((b0 >> k) & 1);
   emit_byte((uint8_t)((temp - 16) << 1));
   emit_byte((uint8_t)((fan & 3) << 6));
   emit_byte(0xA0);
   emit_bit(0); emit_bit(0); emit_bit(1); emit_bit(0);
+  tx_buf[i++] = MARK;
   tx_buf[i++] = -19900;
   emit_byte(swing ? 0x01 : 0x00);
   emit_byte(0x20);
