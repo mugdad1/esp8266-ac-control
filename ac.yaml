@@ -3,8 +3,9 @@
 # from the original Global Cache captures, generator gated against all
 # 17 captured states (structure, sign parity, AC-view bits identical).
 # UI: AC switch (on/off), AC Temperature 16-25 slider, AC Swing switch,
-# AC Fan 0-3 test control (3 = the bit pattern of every original capture,
-# mapping to auto/low/mid/high pending live tests).
+# Test A/B controls sweep the untested low bits of payload byte 2
+# (bits6-7 are the proven pair: bit6 = display light, found live;
+# defaults keep byte2 = 0xC0 = exactly the proven capture pattern).
 # Secrets live in secrets.yaml (gitignored) - see secrets.yaml.example.
 
 esphome:
@@ -22,7 +23,8 @@ esphome:
             id(last_on) = id(ac_on);
             id(last_t) = st;
             id(last_sw) = (int) id(ac_swing);
-            id(last_fan) = id(ac_fan);
+            id(last_a) = id(fan_a);
+            id(last_b) = id(fan_b);
 
 esp8266:
   board: nodemcuv2
@@ -71,10 +73,14 @@ globals:
     type: bool
     restore_value: yes
     initial_value: "false"
-  - id: ac_fan
+  - id: fan_a
     type: int
     restore_value: yes
-    initial_value: "3"
+    initial_value: "0"
+  - id: fan_b
+    type: int
+    restore_value: yes
+    initial_value: "0"
   - id: last_on
     type: bool
     restore_value: no
@@ -87,10 +93,14 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
-  - id: last_fan
+  - id: last_a
     type: int
     restore_value: no
-    initial_value: "3"
+    initial_value: "0"
+  - id: last_b
+    type: int
+    restore_value: no
+    initial_value: "0"
   - id: skip_send
     type: bool
     restore_value: no
@@ -106,9 +116,11 @@ script:
           if (st > 25) st = 25;
           int on = (int) id(ac_on);
           int sw = (int) id(ac_swing);
-          int fn = id(ac_fan);
-          ESP_LOGI("ac", "send: on=%d temp=%d(clamp %d) swing=%d fan=%d", on, id(ac_temp), st, sw, fn);
-          if (on == (int) id(last_on) && st == id(last_t) && sw == id(last_sw) && fn == id(last_fan)) {
+          int fa = id(fan_a);
+          int fb = id(fan_b);
+          int flags = 0xC0 | ((fb & 3) << 2) | (fa & 3);
+          ESP_LOGI("ac", "send: on=%d temp=%d(clamp %d) swing=%d A=%d B=%d flags=%02x", on, id(ac_temp), st, sw, fa, fb, flags);
+          if (on == (int) id(last_on) && st == id(last_t) && sw == id(last_sw) && fa == id(last_a) && fb == id(last_b)) {
             id(skip_send) = true;
             return;
           }
@@ -116,8 +128,9 @@ script:
           id(last_on) = (bool) on;
           id(last_t) = st;
           id(last_sw) = sw;
-          id(last_fan) = fn;
-          build_ac_frame(st, fn, sw, on != 0);
+          id(last_a) = fa;
+          id(last_b) = fb;
+          build_ac_frame(st, flags, sw, on != 0);
       - if:
           condition:
             lambda: "return !id(skip_send);"
@@ -163,14 +176,26 @@ number:
         - lambda: "id(ac_temp) = (int) x;"
         - script.execute: send_ac
   - platform: template
-    name: "AC Fan"
-    id: ac_fan_nb
+    name: "AC Fan Test A"
+    id: fan_a_nb
     min_value: 0
     max_value: 3
     step: 1
     mode: box
-    lambda: return id(ac_fan);
+    lambda: return id(fan_a);
     set_action:
       then:
-        - lambda: "id(ac_fan) = (int) x;"
+        - lambda: "id(fan_a) = (int) x;"
+        - script.execute: send_ac
+  - platform: template
+    name: "AC Fan Test B"
+    id: fan_b_nb
+    min_value: 0
+    max_value: 3
+    step: 1
+    mode: box
+    lambda: return id(fan_b);
+    set_action:
+      then:
+        - lambda: "id(fan_b) = (int) x;"
         - script.execute: send_ac

@@ -8,8 +8,7 @@
 // Frame 0:  header 9000/4450
 //   byte0: bits0-1 sync (11), bit4 power, bits5-7 swing (111=on)
 //   byte1: (temp - 16) << 1        (temp range 16..25, field full at 25)
-//   byte2: fan << 6                (bits6-7, 11 = the value every
-//                                   original capture used = likely auto)
+//   byte2: flags byte              (bits6-7 proven pair, bits0-5 test)
 //   byte3: 0xA0                    (fixed)
 //   nibble: 0x4                    (fixed)
 // Frame gap 19900 us
@@ -28,7 +27,11 @@
 static int tx_buf[160];
 static int tx_len = 0;
 
-static void build_ac_frame(int temp, int fan, bool swing, bool on) {
+// flags2 = full payload byte 2: bits6-7 are proven (11 = the pair that
+// toggled the display light live, kept at 11 by default), bits0-5 are
+// unknown-function test fields (fan speed is somewhere in here or in
+// frame 1 - all 17 captures had them constant).
+static void build_ac_frame(int temp, int flags2, bool swing, bool on) {
   const int MARK = 650, SPACE0 = -580, SPACE1 = -1650;
   int i = 0;
   auto emit_bit = [&](int bit) {
@@ -49,7 +52,7 @@ static void build_ac_frame(int temp, int fan, bool swing, bool on) {
   for (int k = 1; k < 8; k++)
     emit_bit((b0 >> k) & 1);
   emit_byte((uint8_t)((temp - 16) << 1));
-  emit_byte((uint8_t)((fan & 3) << 6));
+  emit_byte((uint8_t) flags2);
   emit_byte(0xA0);
   emit_bit(0); emit_bit(0); emit_bit(1); emit_bit(0);
   tx_buf[i++] = MARK;
