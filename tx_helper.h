@@ -22,11 +22,14 @@
 #include <stdint.h>
 #include <vector>
 
+// ESPHome raw transmit requires signed alternating values: positive = mark
+// (carrier on), negative = gap (carrier off). Gaps are stored negated.
+
 static int tx_buf[160];
 static int tx_len = 0;
 
 static void build_ac_frame(int temp, int fan, bool swing, bool on) {
-  const int MARK = 650, SPACE0 = 580, SPACE1 = 1650;
+  const int MARK = 650, SPACE0 = -580, SPACE1 = -1650;
   int i = 0;
   auto emit_bit = [&](int bit) {
     tx_buf[i++] = MARK;
@@ -37,13 +40,13 @@ static void build_ac_frame(int temp, int fan, bool swing, bool on) {
       emit_bit((b >> k) & 1);
   };
   tx_buf[i++] = 9000;
-  tx_buf[i++] = 4450;
+  tx_buf[i++] = -4450;
   emit_byte((uint8_t)((on ? 0x10 : 0x00) | (swing ? 0xE0 : 0x00) | 0x03));
   emit_byte((uint8_t)((temp - 16) << 1));
   emit_byte((uint8_t)((fan & 3) << 6));
   emit_byte(0xA0);
   emit_bit(0); emit_bit(0); emit_bit(1); emit_bit(0);
-  tx_buf[i++] = 19900;
+  tx_buf[i++] = -19900;
   emit_byte(swing ? 0x01 : 0x00);
   emit_byte(0x20);
   emit_byte(0x00);
