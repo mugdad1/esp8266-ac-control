@@ -14,7 +14,7 @@
 //   nibble: 0x4                    (fixed)
 // Frame gap 19900 us
 // Frame 1:  header = first data bit (no special header)
-//   byte0: swing mirror (bit7)
+//   byte0: swing mirror (bit0 - the first transmitted bit)
 //   byte1: 0x20       byte2: 0x00
 //   byte3: power off  -> 0xF0 (sentinel); power on -> (temp - 11) << 4
 // Trailing mark. 38 kHz carrier, mark 650 us, 0-space 580 us, 1-space 1650 us.
@@ -44,7 +44,7 @@ static void build_ac_frame(int temp, int fan, bool swing, bool on) {
   emit_byte(0xA0);
   emit_bit(0); emit_bit(0); emit_bit(1); emit_bit(0);
   tx_buf[i++] = 19900;
-  emit_byte(swing ? 0x80 : 0x00);
+  emit_byte(swing ? 0x01 : 0x00);
   emit_byte(0x20);
   emit_byte(0x00);
   emit_byte(on ? (uint8_t)((temp - 11) << 4) : 0xF0);
