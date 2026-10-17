@@ -173,7 +173,7 @@ number:
     lambda: return id(ac_temp);
     set_action:
       then:
-        - lambda: "id(ac_temp) = (int) x;"
+        - lambda: "id(ac_temp) = (int) x; id(ac_temp_nb).publish_state(x);"
         - script.execute: send_ac
   - platform: template
     name: "AC Fan Test A"
@@ -185,7 +185,7 @@ number:
     lambda: return id(fan_a);
     set_action:
       then:
-        - lambda: "id(fan_a) = (int) x;"
+        - lambda: "id(fan_a) = (int) x; id(fan_a_nb).publish_state(x);"
         - script.execute: send_ac
   - platform: template
     name: "AC Fan Test B"
@@ -197,5 +197,5 @@ number:
     lambda: return id(fan_b);
     set_action:
       then:
-        - lambda: "id(fan_b) = (int) x;"
+        - lambda: "id(fan_b) = (int) x; id(fan_b_nb).publish_state(x);"
         - script.execute: send_ac
