@@ -8,7 +8,7 @@
 // Frame 0:  header 9000/4450
 //   byte0: bits0-1 sync (11), bit4 power, bits5-7 swing (111=on)
 //   byte1: (temp - 16) << 1        (temp range 16..25, field full at 25)
-//   byte2: flags byte              (bits6-7 proven pair, bits0-5 test)
+//   byte2: 0xC0 (fixed - proven pair, bit6 = display light toggle)
 //   byte3: 0xA0                    (fixed)
 //   nibble: 0x4                    (fixed)
 // Frame gap 19900 us
@@ -27,10 +27,8 @@
 static int tx_buf[160];
 static int tx_len = 0;
 
-// flags2 = full payload byte 2: bits6-7 are proven (11 = the pair that
-// toggled the display light live, kept at 11 by default), bits0-5 are
-// unknown-function test fields (fan speed is somewhere in here or in
-// frame 1 - all 17 captures had them constant).
+// flags2 = payload byte 2; always 0xC0 in the final build - the proven
+// pattern of every captured frame (bits6-7 = display light pair).
 static void build_ac_frame(int temp, int flags2, bool swing, bool on) {
   const int MARK = 650, SPACE0 = -580, SPACE1 = -1650;
   int i = 0;
