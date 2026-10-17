@@ -46,6 +46,15 @@ static void build_ac_frame(int temp, int flags2, bool swing, bool on) {
   // header when the layout was reverse-engineered - verified against the
   // captures: AC's view == this sequence). Structure matches the proven
   // arrays exactly: 35 bit pairs, lone mark, frame gap, frame 1, tail.
+  // Power-off is context-strict on this unit: the original OFF capture is
+  // (temp 18, swing 000), and live testing 2026-10-17 proved every other
+  // combination (temp 24, swing on) is silently ignored while temp 18 +
+  // swing off turns the unit off. Off frames always replay that photo;
+  // the sliders keep their values for the next on-frame.
+  if (!on) {
+    temp = 18;
+    swing = false;
+  }
   uint8_t b0 = (uint8_t)((on ? 0x10 : 0x00) | (swing ? 0xE0 : 0x00) | 0x03);
   for (int k = 1; k < 8; k++)
     emit_bit((b0 >> k) & 1);
