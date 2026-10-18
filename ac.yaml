@@ -2,7 +2,7 @@
 # Frames are synthesized by tx_helper.h - protocol decoded bit-for-bit
 # from the original Global Cache captures, generator gated against all
 # 17 captured states (structure, sign parity, AC-view bits identical).
-# UI: AC switch (on/off), AC Temperature 23-30 slider, AC Swing switch.
+# UI: AC switch (on/off), AC Temperature 16-30 slider, AC Swing switch.
 # Secrets live in secrets.yaml (gitignored) - see secrets.yaml.example.
 
 esphome:
@@ -15,7 +15,7 @@ esphome:
       then:
         - lambda: |-
             int st = id(ac_temp);
-            if (st < 23) st = 23;
+            if (st < 16) st = 16;
             if (st > 30) st = 30;
             id(ac_temp) = st;
             id(last_on) = id(ac_on);
@@ -92,7 +92,7 @@ script:
     then:
       - lambda: |-
           int st = id(ac_temp);
-          if (st < 23) st = 23;
+          if (st < 16) st = 16;
           if (st > 30) st = 30;
           int on = (int) id(ac_on);
           int sw = (int) id(ac_swing);
@@ -148,7 +148,7 @@ number:
   - platform: template
     name: "AC Temperature"
     id: ac_temp_nb
-    min_value: 23
+    min_value: 16
     max_value: 30
     step: 1
     mode: slider
