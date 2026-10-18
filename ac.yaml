@@ -2,7 +2,7 @@
 # Frames are synthesized by tx_helper.h - protocol decoded bit-for-bit
 # from the original Global Cache captures, generator gated against all
 # 17 captured states (structure, sign parity, AC-view bits identical).
-# UI: AC switch (on/off), AC Temperature 16-25 slider, AC Swing switch.
+# UI: AC switch (on/off), AC Temperature 23-30 slider, AC Swing switch.
 # Secrets live in secrets.yaml (gitignored) - see secrets.yaml.example.
 
 esphome:
@@ -15,8 +15,9 @@ esphome:
       then:
         - lambda: |-
             int st = id(ac_temp);
-            if (st < 16) st = 16;
-            if (st > 25) st = 25;
+            if (st < 23) st = 23;
+            if (st > 30) st = 30;
+            id(ac_temp) = st;
             id(last_on) = id(ac_on);
             id(last_t) = st;
             id(last_sw) = (int) id(ac_swing);
@@ -91,8 +92,8 @@ script:
     then:
       - lambda: |-
           int st = id(ac_temp);
-          if (st < 16) st = 16;
-          if (st > 25) st = 25;
+          if (st < 23) st = 23;
+          if (st > 30) st = 30;
           int on = (int) id(ac_on);
           int sw = (int) id(ac_swing);
           int flags = 0xC0;
@@ -119,6 +120,11 @@ switch:
   - platform: template
     name: "AC"
     id: ac_power
+    # Never restore/fire at boot: globals (ac_on) hold the truth. A boot-time
+    # off action once replayed a real OFF frame (2026-10-18 06:41:57, OTA
+    # reboot killed the running AC) because the dedupe baseline (last_t=21)
+    # didn't match the restored temp (25).
+    restore_mode: DISABLED
     lambda: return id(ac_on);
     turn_on_action:
       - lambda: "id(ac_on) = true;"
@@ -129,6 +135,7 @@ switch:
   - platform: template
     name: "AC Swing"
     id: ac_swing_sw
+    restore_mode: DISABLED
     lambda: return id(ac_swing);
     turn_on_action:
       - lambda: "id(ac_swing) = true;"
@@ -141,8 +148,8 @@ number:
   - platform: template
     name: "AC Temperature"
     id: ac_temp_nb
-    min_value: 16
-    max_value: 25
+    min_value: 23
+    max_value: 30
     step: 1
     mode: slider
     lambda: return id(ac_temp);

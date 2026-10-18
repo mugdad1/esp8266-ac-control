@@ -7,7 +7,7 @@
 //
 // Frame 0:  header 9000/4450
 //   byte0: bits0-1 sync (11), bit4 power, bits5-7 swing (111=on)
-//   byte1: (temp - 16) << 1        (temp range 16..25, field full at 25)
+//   byte1: (temp - 16) << 1        (4-bit field: temp 16..31; slider 23..30)
 //   byte2: 0xC0 (fixed - proven pair, bit6 = display light toggle)
 //   byte3: 0xA0                    (fixed)
 //   nibble: 0x4                    (fixed)
@@ -15,7 +15,11 @@
 // Frame 1:  header = first data bit (no special header)
 //   byte0: swing mirror (bit0 - the first transmitted bit)
 //   byte1: 0x20       byte2: 0x00
-//   byte3: power off  -> 0xF0 (sentinel); power on -> (temp - 11) << 4
+//   byte3: power off  -> 0xF0 (sentinel); power on -> (min(temp,25) - 11) << 4
+//         (0xF0 = nibble 15 = the OFF byte itself: temp 26 and OFF are
+//          indistinguishable here, and 27..30 overflow the 4-bit field.
+//          Our captures stop at on_25=0xE0, so on-frames never emit 0xF0;
+//          frame 0 carries the true 26..30 in its 16..31 field.)
 // Trailing mark. 38 kHz carrier, mark 650 us, 0-space 580 us, 1-space 1650 us.
 
 #include <stdint.h>
@@ -55,6 +59,15 @@ static void build_ac_frame(int temp, int flags2, bool swing, bool on) {
     temp = 18;
     swing = false;
   }
+  if (temp < 16) temp = 16;   // frame-0 field range guard (16..31)
+  if (temp > 30) temp = 30;
+  // Frame-1 byte3's temp echo is a 4-bit field (value temp-11, 16..26).
+  // 26 = 0xF0 = byte-for-byte the power-off sentinel, and 27..30 would
+  // overflow the nibble - so cap the echo at 25 (0xE0, the proven on_25
+  // byte). An on-frame can then never be read as OFF; frame 0 still
+  // carries the real 26..30. True remote codes for 26..30 are unknown
+  // (no captures above 25) until Global Cache is checked.
+  const int echo = temp > 25 ? 25 : temp;
   uint8_t b0 = (uint8_t)((on ? 0x10 : 0x00) | (swing ? 0xE0 : 0x00) | 0x03);
   for (int k = 1; k < 8; k++)
     emit_bit((b0 >> k) & 1);
@@ -67,7 +80,7 @@ static void build_ac_frame(int temp, int flags2, bool swing, bool on) {
   emit_byte(swing ? 0x01 : 0x00);
   emit_byte(0x20);
   emit_byte(0x00);
-  emit_byte(on ? (uint8_t)((temp - 11) << 4) : 0xF0);
+  emit_byte(on ? (uint8_t)((echo - 11) << 4) : 0xF0);
   tx_buf[i++] = MARK;
   tx_len = i;
 }
